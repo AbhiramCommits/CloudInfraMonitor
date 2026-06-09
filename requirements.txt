@@ -5,4 +5,5 @@ prometheus-client
 boto3
 python-dotenv
 httpx
+docker
 pytest
