@@ -1,7 +1,23 @@
+from contextlib import asynccontextmanager
+
 import uvicorn
 from fastapi import FastAPI
 
-app = FastAPI(title="CloudInfraMonitor")
+from src.exporters.collector_loop import CollectorLoop
+from src.exporters.prometheus_exporter import PrometheusExporter
+
+exporter = PrometheusExporter()
+collector_loop = CollectorLoop(exporter)
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    collector_loop.start()
+    yield
+    await collector_loop.stop()
+
+
+app = FastAPI(title="CloudInfraMonitor", lifespan=lifespan)
 
 
 @app.get("/health")
@@ -9,5 +25,4 @@ def health():
     return {"status": "ok"}
 
 
-if __name__ == "__main__":
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+app.mount("/metrics", exporter.asgi_app())
