@@ -8,19 +8,25 @@ logger = logging.getLogger(__name__)
 
 
 class CollectorLoop:
-    def __init__(self, exporter, interval: float = 15.0):
-        self._exporter = exporter
+    def __init__(self, exporters: list | None = None, interval: float = 15.0):
+        self._exporters = exporters or []
         self._interval = interval
         self._system = SystemCollector()
         self._docker = DockerCollector()
         self._task: asyncio.Task | None = None
+        self.latest_system: dict = {}
+        self.latest_containers: list[dict] = []
 
     async def _run(self) -> None:
         while True:
             try:
-                system_metrics = self._system.collect_all()
-                container_metrics = self._docker.collect()
-                self._exporter.update(system_metrics, container_metrics)
+                self.latest_system = self._system.collect_all()
+                self.latest_containers = self._docker.collect()
+                for exp in self._exporters:
+                    try:
+                        exp.update(self.latest_system, self.latest_containers)
+                    except Exception:
+                        logger.exception("Exporter %s failed", type(exp).__name__)
             except Exception:
                 logger.exception("Collector loop iteration failed")
             await asyncio.sleep(self._interval)
