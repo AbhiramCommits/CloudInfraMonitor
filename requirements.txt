@@ -1,0 +1,8 @@
+fastapi
+uvicorn
+psutil
+prometheus-client
+boto3
+python-dotenv
+httpx
+pytest
